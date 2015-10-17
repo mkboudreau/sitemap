@@ -17,11 +17,12 @@ import (
 const (
 	FormatConsole string = "tab"
 	FormatJson           = "json"
+	FormatGraph          = "graph"
 	FormatDigraph        = "digraph"
 )
 
 var (
-	AllowableFormats []string = []string{FormatConsole, FormatJson, FormatDigraph}
+	AllowableFormats []string = []string{FormatConsole, FormatJson, FormatDigraph, FormatGraph}
 )
 
 func AppAction() func(c *cli.Context) {
@@ -137,6 +138,8 @@ func getSitemapFormatter(c *cli.Context) format.SiteFormatter {
 		formatter = new(format.JsonSiteFormatter)
 	} else if f == FormatDigraph {
 		formatter = new(format.DigraphSiteFormatter)
+	} else if f == FormatGraph {
+		formatter = new(format.GraphSiteFormatter)
 	}
 
 	return formatter
