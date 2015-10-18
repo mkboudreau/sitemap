@@ -11,16 +11,16 @@ var translationSameSiteTestCases = []struct {
 	site, link, expected string
 	valid                bool
 }{
-	{"", "/link.html", "http://localhost/link.html", true},
+	{"", "/link.html", "/link.html", true},
 	{"http://www.site.com", "/link.html", "http://www.site.com/link.html", true},
 	{"http://www.site.com/index.html", "link.html", "http://www.site.com/link.html", true},
 	{"http://www.site.com/index.html", "sub/link.html", "http://www.site.com/sub/link.html", true},
-	{"http://www.site.com/sub/index.html", "again/link.html", "http://www.site.com/sub/again/link.html", true},
+	{"http://www.site.com/sub/index.html", "again/link.html", "http://www.site.com/sub/again/link.html", true}, //
 	{"http://www.site.com/sub/index.html", "/fake/link.html", "http://www.site.com/fake/link.html", true},
-	{"/index.html", "link.html", "http://localhost/link.html", true},
-	{"site.com/index.html", "link.html", "http://site.com/link.html", true},
-	{"www.site.com/index.html", "link.html", "http://www.site.com/link.html", true},
-	{"http://www.site.com/sub/index.html", "link.html", "http://www.site.com/sub/link.html", true},
+	{"/index.html", "link.html", "/link.html", true},
+	{"site.com/index.html", "link.html", "//site.com/link.html", true},
+	{"www.site.com/index.html", "link.html", "//www.site.com/link.html", true},
+	{"http://www.site.com/sub/index.html", "link.html", "http://www.site.com/sub/link.html", true}, //
 	{"http://www.site.com/sub/index.html", "/link.html", "http://www.site.com/link.html", true},
 }
 var translationDifferentSiteTestCases = []struct {

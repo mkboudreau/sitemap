@@ -18,22 +18,17 @@ func (f *TabbedSiteFormatter) traverse(w io.Writer, site *domain.Site, depth int
 	tabs := getTabCount(depth)
 	fmt.Fprintf(w, "%vURL:   \t%v\n", tabs, site.Url)
 
-	if site.Assets == nil || len(site.Assets) == 0 {
-		//fmt.Fprintf(w, "%vAssets: <none>\n", tabs)
-	} else {
+	if site.Assets != nil && len(site.Assets) != 0 {
 		fmt.Fprintf(w, "%vAssets:\t%v\n", tabs, strings.Join(site.Assets, ", "))
 	}
 
-	if site.Links == nil || len(site.Links) == 0 {
-		//fmt.Fprintf(w, "%vLinks: <none>\n", tabs)
-	} else {
+	if site.Links != nil && len(site.Links) != 0 {
 		fmt.Fprintf(w, "%vLinks: \n", tabs)
 		for _, link := range site.Links {
 			f.traverse(w, link, (depth + 1))
 		}
 		fmt.Fprintln(w, "")
 	}
-	//fmt.Fprintln(w, "")
 }
 
 func getTabCount(count int) string {

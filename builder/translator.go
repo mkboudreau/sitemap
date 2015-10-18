@@ -7,15 +7,19 @@ import (
 )
 
 func translateLink(sitelink string, newlink string) string {
+	//log.Println("... site link:", sitelink, "; new link:", newlink)
 	newURL, newErr := normalizeToURL(newlink)
 	if newErr != nil {
 		log.Printf("Could not parse link %v: %v", newlink, newErr)
 		return ""
 	}
 	siteURL, siteErr := normalizeToURL(sitelink)
+	//log.Println("... normalized site link:", siteURL.String(), "; new link:", newURL.String())
 
 	normalizeSchemeFromURL(newURL, siteURL)
 	normalizeHostFromURL(newURL, siteURL)
+
+	//log.Println("... more normalized site link:", siteURL.String(), "; new link:", newURL.String())
 
 	if !schemeIsHttpCompatible(newURL.Scheme) {
 		return ""
@@ -41,7 +45,7 @@ func translateLink(sitelink string, newlink string) string {
 
 func normalizeSchemeFromURL(target *url.URL, source *url.URL) {
 	if target.Scheme == "" {
-		if source != nil && source.Scheme != "" {
+		if source != nil && source.Scheme != "" && strings.HasPrefix(target.Path, "/") {
 			target.Scheme = source.Scheme
 		} else if target.Host != "" {
 			target.Scheme = "http"
@@ -50,7 +54,7 @@ func normalizeSchemeFromURL(target *url.URL, source *url.URL) {
 }
 func normalizeHostFromURL(target *url.URL, source *url.URL) {
 	if target.Host == "" {
-		if source != nil && source.Host != "" {
+		if source != nil && source.Host != "" && strings.HasPrefix(target.Path, "/") {
 			target.Host = source.Host
 		} else {
 			//target.Host = "localhost"
