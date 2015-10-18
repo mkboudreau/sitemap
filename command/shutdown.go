@@ -22,7 +22,7 @@ func osSignalShutdown(doBeforeShutdown func(), shutdownDelay int) {
 		log.Println("Received signal:", str.String())
 		fn()
 
-		log.Printf("Shutting down after %v seconds\n", delay)
+		log.Printf("Shutting down after maximum of %v seconds\n", delay)
 		time.Sleep(time.Duration(delay) * time.Second)
 
 		os.Exit(0)

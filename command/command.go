@@ -152,6 +152,8 @@ func runSitemapBuilder(c *cli.Context) *domain.Sitemap {
 	startingUrl := c.Args()[0]
 
 	builder := builder.NewSitemapBuilder(rate, timeout, workers)
+
+	osSignalShutdown(builder.Interrupt, 5)
 	return builder.Build(startingUrl)
 }
 

@@ -25,7 +25,7 @@ func NewSitemapBuilder(rate time.Duration, timeout time.Duration, workers int) *
 	}
 }
 
-func (builder *SitemapBuilder) interrupt() {
+func (builder *SitemapBuilder) Interrupt() {
 	close(builder.interruptChannel)
 }
 
@@ -33,7 +33,6 @@ func (builder *SitemapBuilder) Build(startingURL string) *domain.Sitemap {
 	var workers sync.WaitGroup
 
 	siteChannel := make(chan *domain.Site, builder.workers*5)
-	doneChannel := make(chan struct{})
 
 	url := translateLink("", startingURL)
 	top := domain.NewSite(url)
@@ -70,7 +69,6 @@ func (builder *SitemapBuilder) Build(startingURL string) *domain.Sitemap {
 	}
 
 	workers.Wait()
-	close(doneChannel)
 
 	return sitemap
 }
