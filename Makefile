@@ -7,9 +7,9 @@ install: deps
 build:
 	go build ./... 
 	go build
-import: tools
+imports: tools
 	goimports -w .
-	goimports -w */***
+	goimports -w */*.go
 test:
 	go test ./...
 deps:
