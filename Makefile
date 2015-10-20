@@ -21,6 +21,7 @@ tools:
 	go get github.com/golang/lint/golint
 	go get golang.org/x/tools/cmd/goimports
 clean:
+	rm -f sitemap
 	rm -rf reports/
 cover: report-dir
 	go test -coverprofile=reports/coverage.raw -covermode count 
