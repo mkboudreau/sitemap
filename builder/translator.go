@@ -26,7 +26,7 @@ func translateLink(sitelink string, newlink string) string {
 	}
 
 	if siteErr != nil || siteURL == nil || siteURL.String() == "" {
-		log.Println("Problem with site url:", siteURL, ";", siteErr)
+		log.Printf("(ignore if this is top url) could not translate site url=%v; err=%v; returning new url=%v", siteURL, siteErr, newURL)
 		return newURL.String()
 	}
 

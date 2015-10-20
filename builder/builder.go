@@ -16,6 +16,11 @@ type SitemapBuilder struct {
 	interruptChannel chan struct{}
 }
 
+type linkResponse struct {
+	site string
+	link string
+}
+
 func NewSitemapBuilder(rate time.Duration, timeout time.Duration, workers int) *SitemapBuilder {
 	return &SitemapBuilder{
 		rate:             rate,
@@ -33,12 +38,18 @@ func (builder *SitemapBuilder) Build(startingURL string) *domain.Sitemap {
 	var workers sync.WaitGroup
 
 	siteChannel := make(chan *domain.Site, builder.workers*5)
+	responseChannel := make(chan *linkResponse, builder.workers)
+
+	defer close(siteChannel)
+	defer close(responseChannel)
 
 	url := translateLink("", startingURL)
 	top := domain.NewSite(url)
 	sitemap := domain.NewSitemap(top)
 
-	go addSiteToSitemap(top, sitemap, siteChannel)
+	go builder.processResponses(sitemap, responseChannel, siteChannel)
+
+	siteChannel <- top
 
 	for i := 0; i < builder.workers; i++ {
 		workers.Add(1)
@@ -51,17 +62,21 @@ func (builder *SitemapBuilder) Build(startingURL string) *domain.Sitemap {
 				elapsed := time.Since(last)
 				remaining := builder.rate - elapsed
 				if remaining > 0 {
-					<-time.After(remaining)
+					select {
+					case <-builder.interruptChannel:
+						break loop
+					case <-time.After(remaining):
+					}
 				}
 				last = time.Now() // reset
 				select {
-				case site := <-siteChannel:
-					addSiteToSitemap(site, sitemap, siteChannel)
-				case <-time.After(builder.timeout):
-					log.Println("Timeout:", index)
-					break loop
 				case <-builder.interruptChannel:
 					log.Println("Interrupt:", index)
+					break loop
+				case site := <-siteChannel:
+					builder.procesSite(site, responseChannel)
+				case <-time.After(builder.timeout):
+					log.Println("Timeout:", index)
 					break loop
 				}
 			}
@@ -73,40 +88,34 @@ func (builder *SitemapBuilder) Build(startingURL string) *domain.Sitemap {
 	return sitemap
 }
 
-func addSiteToSitemap(site *domain.Site, sitemap *domain.Sitemap, siteChannel chan<- *domain.Site) {
+func (builder *SitemapBuilder) processResponses(sitemap *domain.Sitemap, approvedLink <-chan *linkResponse, siteChannel chan<- *domain.Site) {
+	for {
+		select {
+		case <-builder.interruptChannel:
+			log.Println("Interruptted")
+			return
+		case response, ok := <-approvedLink:
+			if !ok {
+				break
+			}
+			if linkedSite, isNew := sitemap.AddLink(response.site, response.link); isNew {
+				go func() {
+					select {
+					case <-builder.interruptChannel:
+					case siteChannel <- linkedSite:
+					}
+				}()
+			}
+		}
+	}
+}
+
+func (builder *SitemapBuilder) procesSite(site *domain.Site, approvedLink chan<- *linkResponse) {
 	log.Println("adding: ", site.Url)
 	page, err := scrapePage(site.Url)
 	if err != nil {
 		log.Printf("could not retrieve links from url [%v]: %v", site.Url, err)
 		return
-	}
-
-	allLinksForSite := make(map[string]bool)
-	for _, link := range page.Links {
-		if translatedLink := translateLink(site.Url, link); translatedLink != "" {
-			if validateLinkInSameDomain(site.Url, link) {
-				linkedSite, isNew := sitemap.AddUrl(translatedLink)
-				/*
-					if isNew {
-						site.AddLink(linkedSite)
-					} else {
-						site.AddLink(linkedSite.CopyAndFlattenSite())
-					}
-				*/
-				if isNew {
-					// first time seen for entire site
-					allLinksForSite[linkedSite.Url] = true
-					site.Links = append(site.Links, linkedSite)
-					go func() {
-						siteChannel <- linkedSite
-					}()
-				} else if !allLinksForSite[linkedSite.Url] {
-					// already processed somewhere else in the site
-					allLinksForSite[linkedSite.Url] = true
-					site.Links = append(site.Links, linkedSite.CopyAndFlattenSite())
-				}
-			}
-		}
 	}
 
 	for _, asset := range page.Assets {
@@ -116,4 +125,14 @@ func addSiteToSitemap(site *domain.Site, sitemap *domain.Sitemap, siteChannel ch
 			fmt.Println("Ignoring asset", asset, "which translated to", translatedAsset)
 		}
 	}
+
+	for _, link := range page.Links {
+		if translatedLink := translateLink(site.Url, link); translatedLink != "" {
+			if validateLinkInSameDomain(site.Url, link) {
+				newLink := &linkResponse{site: site.Url, link: translatedLink}
+				approvedLink <- newLink
+			}
+		}
+	}
+
 }

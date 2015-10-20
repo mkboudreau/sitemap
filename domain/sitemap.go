@@ -6,17 +6,19 @@ import (
 )
 
 type Site struct {
-	Url    string        `json:"url"`
-	Assets []string      `json:"assets,omitempty"`
-	Links  []*Site       `json:"links,omitempty"`
-	mutex  *sync.RWMutex `json:"-"`
+	Url    string   `json:"url"`
+	Assets []string `json:"assets,omitempty"`
+	Links  []*Site  `json:"links,omitempty"`
+
+	allLinksForSite map[string]bool `json:"-"`
+	mutex           *sync.RWMutex   `json:"-"`
 }
 
 func (s *Site) String() string {
 	return fmt.Sprintf("\nURL=%v; Assets=%v; Links=%v", s.Url, s.Assets, s.Links)
 }
 
-func (s *Site) CopyAndFlattenSite() *Site {
+func (s *Site) copyAndFlattenSite() *Site {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	newSite := NewSite(s.Url)
@@ -30,18 +32,18 @@ func (s *Site) CopyAndFlattenSite() *Site {
 }
 
 func NewSite(url string) *Site {
-	return &Site{Url: url, mutex: &sync.RWMutex{}}
+	return &Site{Url: url, mutex: &sync.RWMutex{}, allLinksForSite: make(map[string]bool)}
 }
-func (s *Site) AddLink(newSite *Site) bool {
+
+func (s *Site) AddLink(newSite *Site) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	link := s.Links[0]
-	if link != nil {
-		return false
+	if !s.allLinksForSite[newSite.Url] {
+		s.allLinksForSite[newSite.Url] = true
 	}
+
 	s.Links = append(s.Links, newSite)
-	return true
 }
 
 type Sitemap struct {
@@ -51,19 +53,32 @@ type Sitemap struct {
 }
 
 func NewSitemap(top *Site) *Sitemap {
-	return &Sitemap{Top: top, allsites: make(map[string]*Site), mutex: &sync.RWMutex{}}
+	sitemap := &Sitemap{Top: top, allsites: make(map[string]*Site), mutex: &sync.RWMutex{}}
+	sitemap.allsites[top.Url] = top
+	return sitemap
 }
 
-func (sitemap *Sitemap) AddUrl(url string) (*Site, bool) {
-	sitemap.mutex.Lock()
-	defer sitemap.mutex.Unlock()
+func (s *Sitemap) AddLink(parentURL string, childURL string) (*Site, bool) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	site := sitemap.allsites[url]
-	if site != nil {
-		return site, false
+	var isNew bool
+
+	parent := s.allsites[parentURL]
+	if parent == nil {
+		return nil, false
 	}
-	site = NewSite(url)
-	sitemap.allsites[url] = site
 
-	return site, true
+	child := s.allsites[childURL]
+	if child != nil {
+		child = child.copyAndFlattenSite()
+	} else {
+		child = NewSite(childURL)
+		s.allsites[childURL] = child
+		isNew = true
+	}
+
+	parent.AddLink(child)
+
+	return child, isNew
 }
