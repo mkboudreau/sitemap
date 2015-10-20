@@ -39,13 +39,13 @@ func AppCliFlags() []cli.Flag {
 		},
 		cli.IntFlag{
 			Name:   "workers, w",
-			Value:  10,
+			Value:  25,
 			Usage:  "Dictates how many workers are submitting requests to the server",
 			EnvVar: "WORKERS",
 		},
 		cli.StringFlag{
 			Name:   "rate, r",
-			Value:  "2s",
+			Value:  "1s",
 			Usage:  "Rate of delay between each request for each worker. Format is time.Duration format (i.e. 1s, 2m, 4h, etc.).",
 			EnvVar: "RATE",
 		},
